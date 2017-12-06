@@ -1,0 +1,3 @@
+name = Calendar Repeat Note
+description = This is a Drupal 7 module that will allow you to add notes for repeat events.
+core = 7.x

@@ -1,0 +1,142 @@
+<?php
+
+/**
+ * Set the storage of the variables for the fields.
+ * @param array $field not used.
+ * @return array schema for the information.
+ */
+function calendar_repeat_note_field_schema(/** @noinspection PhpUnusedParameterInspection */$field)
+{
+  $schema = [];
+  $schema['columns']['calendar_repeat_note_date'] = [
+    'type' => 'varchar',
+    'length' => 255,
+    'not null' => true
+  ];
+  $schema['columns']['calendar_repeat_note_note'] = [
+    'type' => 'text',
+    'not null' => true
+  ];
+  return $schema;
+}
+
+function calendar_repeat_note_field_info()
+{
+  $fields = [];
+  $fields['calendar_repeat_note'] = [
+    'label' => t('Calendar Repeat Note'),
+    'description' => t('Display a note on a specific repeat date.'),
+    'default_widget' => 'calendar_repeat_note_standard',
+    'default_formatter' => 'calendar_repeat_note_display'
+  ];
+  return $fields;
+}
+
+/**
+ * Implements hook_field_widget_info()
+ */
+function calendar_repeat_note_field_widget_info()
+{
+  $widgets = array();
+  $widgets['calendar_repeat_note_standard'] = array(
+    'label' => t('Repeat Note Form'),
+    'field types' => array('calendar_repeat_note'),
+    'settings' => array(),
+  );
+  return $widgets;
+}
+
+/**
+ * Implements hook_field_widget_form()
+ */
+function calendar_repeat_note_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element)
+{
+  switch ($instance['widget']['type']) {
+    case 'calendar_repeat_note_standard':
+      // Setting switch into parameters that wll work widget types that are in module.
+      if(empty($form_state['node'])){
+        return $element;
+      }
+      $options = ['' => ''];
+      foreach($form_state['node']->field_event_start_date['und'] as $entry) {
+        $range = $entry['value'];
+        if(!empty($entry['value2'])) {
+          $range = $entry['value'] . ' to ' . $entry['value2'];
+        }
+        $options[$range] = $range;
+      }
+
+
+      $element += array(
+        '#type' => 'fieldset',
+        '#title' => t('Occurrence Note'),
+        '#delta' => $delta,
+        '#weight' => isset($element['#weight']) ? $element['#weight'] : 0,
+      );
+      $element['calendar_repeat_note_date'] = array(
+        '#title' => t('Date'),
+        '#type' => 'select',
+        '#options' => $options,
+        '#delta' => $delta,
+        '#weight' => isset($element['#weight']) ? $element['#weight'] : 0,
+      );
+      $element['calendar_repeat_note_note'] = array(
+        '#title' => t('Note'),
+        '#type' => 'textarea',
+        '#attributes' => array('class' => array('text-full')),
+        '#delta' => $delta,
+        '#weight' => isset($element['#weight']) ? $element['#weight'] : 0,
+      );
+
+      break;
+  }
+  return $element;
+}
+
+/**
+ * Needs to return false in order for the fields to be saved.
+ * Implements hook_field_is_empty().
+ */
+function calendar_repeat_note_field_is_empty($item, $field)
+{
+  return (!isset($item['calendar_repeat_note_date']) || $item['calendar_repeat_note_date'] === '')
+    && (!isset($item['calendar_repeat_note_note']) || $item['calendar_repeat_note_note'] === '');
+}
+
+//////////////////////////////////////
+/// RENDERING THE FIELD
+//////////////////////////////////////
+
+function calendar_repeat_note_field_formatter_info()
+{
+  return array(
+    'calendar_repeat_note_display' => array(
+      'label' => t('Display'),
+      'field types' => array('calendar_repeat_note'),
+    ),
+  );
+}
+
+function calendar_repeat_note_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display)
+{
+  $element = [];
+  switch ($display['type']) {
+    case 'calendar_repeat_note_display':
+      foreach ($items as $delta => $item) {
+        $element['#title'] = t('Occurrence Notes');
+        $dates = explode(' to ', $item['calendar_repeat_note_date']);
+        $startDate = $dates[0];
+        $endDate = '';
+        if (count($dates) > 1) {
+          $endDate = " to <strong>{$dates[1]}</strong>";
+        }
+
+        $html = "<strong>{$startDate}</strong>{$endDate}
+                <p>{$item['calendar_repeat_note_note']}</p>";
+        $element[$delta] = ['#markup' => $html];
+      }
+      break;
+    default:
+  }
+  return $element;
+}
